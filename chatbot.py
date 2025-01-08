@@ -4,9 +4,11 @@ from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 from langchain.text_splitter import CharacterTextSplitter
 import os
+import PyPDF2
+
 
 # Configurar clave de API de OpenAI
-os.environ["OPENAI_API_KEY"] = "TU_API_KEY"
+os.environ["OPENAI_API_KEY"] = "api"
 
 # 1. Cargar y dividir el texto del libro
 def cargar_texto_y_dividir(ruta_archivo):
@@ -16,6 +18,16 @@ def cargar_texto_y_dividir(ruta_archivo):
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     fragmentos = text_splitter.split_text(contenido)
     return fragmentos
+
+
+def extraer_texto_pdf(ruta_pdf):
+    texto = ""
+    with open(ruta_pdf, "rb") as archivo:
+        lector_pdf = PyPDF2.PdfReader(archivo)
+        for pagina in lector_pdf.pages:
+            texto += pagina.extract_text()
+    return texto
+
 
 # 2. Crear o cargar el almacén vectorial
 def configurar_almacen_vectorial(fragmentos, embeddings, ruta_vectorstore):
@@ -46,16 +58,23 @@ def ejecutar_chatbot(chatbot):
 
 # Configuración principal
 if __name__ == "__main__":
-    # Ruta al archivo del libro y vectorstore
-    ruta_libro = "libro.txt"
+    # Ruta al PDF
+    ruta_pdf = "chatbot/data.pdf"
     ruta_vectorstore = "vectorstore_derechos_consumidor"
 
-    # Cargar el libro y crear fragmentos
-    print("Cargando y procesando el libro...")
-    fragmentos = cargar_texto_y_dividir(ruta_libro)
+    # Extraer texto del PDF y dividirlo en fragmentos
+    print("Extrayendo texto del PDF y procesando...")
+    texto_extraido = extraer_texto_pdf(ruta_pdf)
+
+    from langchain.text_splitter import CharacterTextSplitter
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    fragmentos = text_splitter.split_text(texto_extraido)
 
     # Configurar embeddings y almacén vectorial
     print("Configurando el almacén vectorial...")
+    from langchain.embeddings import OpenAIEmbeddings
+    from langchain.vectorstores import FAISS
+
     embeddings = OpenAIEmbeddings()
     vectorstore = configurar_almacen_vectorial(fragmentos, embeddings, ruta_vectorstore)
 
@@ -65,4 +84,5 @@ if __name__ == "__main__":
 
     # Ejecutar el chatbot
     ejecutar_chatbot(chatbot)
+
 
